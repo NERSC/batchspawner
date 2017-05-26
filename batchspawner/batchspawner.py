@@ -31,7 +31,7 @@ from traitlets import (
 
 from jupyterhub.utils import random_port
 from jupyterhub.spawner import set_user_setuid
-import jupyterhub
+
 
 class BatchSpawnerBase(Spawner):
     """Base class for spawners using resource manager batch job submission mechanisms
