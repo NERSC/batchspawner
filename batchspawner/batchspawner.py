@@ -437,7 +437,7 @@ class UserEnvMixin:
     def get_env(self):
         """Add user environment variables"""
         env = super().get_env()
-        env = self.user_env(env)
+        # env = self.user_env(env)  #HACK
         return env
 
 class SlurmSpawner(UserEnvMixin,BatchSpawnerRegexStates):
