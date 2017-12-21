@@ -501,6 +501,7 @@ class RollinSlurmSpawner(UserEnvMixin,BatchSpawnerRegexStates):
         ).tag(config=True)
 
     batch_script = Unicode("""#!/bin/bash
+#SBATCH --constraint=haswell
 #SBATCH --partition=regular
 #SBATCH --time=10
 #SBATCH --output={homedir}/jupyterhub_slurmspawner_%j.log
