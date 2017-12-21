@@ -29,6 +29,7 @@ from traitlets import (
     Integer, Unicode, Float, Dict, default
 )
 
+import jupyterhub
 from jupyterhub.utils import random_port
 from jupyterhub.spawner import set_user_setuid
 
