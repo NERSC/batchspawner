@@ -507,8 +507,9 @@ class RollinSlurmSpawner(UserEnvMixin,BatchSpawnerRegexStates):
 #SBATCH --output=jupyter-%j.log
 #SBATCH --job-name=spawner-jupyterhub
 
+export PATH=/global/common/cori/software/python/3.6-anaconda-4.4/bin:$PATH
 which jupyterhub-singleuser
-#{cmd}
+{cmd}
 """).tag(config=True)
 
     prefix = "ssh -o StrictHostKeyChecking=no -o preferredauthentications=publickey -l rthomas -p 22 -i /tmp/rthomas.key gert01-224.nersc.gov "
