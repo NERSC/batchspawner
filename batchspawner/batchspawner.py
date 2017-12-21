@@ -501,18 +501,18 @@ class RollinSlurmSpawner(UserEnvMixin,BatchSpawnerRegexStates):
         help="QoS name to submit job to resource manager"
         ).tag(config=True)
 
-    ssh_keyfile = Unicode('~/.ssh/id_rsa',
+    req_ssh_keyfile = Unicode('~/.ssh/id_rsa',
             help="""The keyfile used to authenticate the hub with the remote host.
 
             `~` will be expanded to the user's home directory
             `{username}` will be expanded to the user's username"""
             ).tag(config=True)
 
-    remote_host = Unicode('remote_host',
+    req_remote_host = Unicode('remote_host',
                           help="""The SSH remote host to spawn sessions on."""
                           ).tag(config=True)
 
-    remote_port = Unicode('22',
+    req_remote_port = Unicode('22',
                           help="""The SSH remote port number."""
                           ).tag(config=True)
 
@@ -528,9 +528,7 @@ which jupyterhub-singleuser
 {cmd}
 """).tag(config=True)
 
-    self.ssh_keyfile = self.ssh_keyfile.format(username = self.user.name)
-
-    prefix = "ssh -o StrictHostKeyChecking=no -o preferredauthentications=publickey -l {username} -p {remote_port} -i {ssh_keyfile} {remote_host} "
+    prefix = "ssh -o StrictHostKeyChecking=no -o preferredauthentications=publickey -l {username} -p {req_remote_port} -i {req_ssh_keyfile} {req_remote_host} "
 
     # outputs line like "Submitted batch job 209"
     batch_submit_cmd = Unicode(prefix + 'sbatch').tag(config=True)
@@ -542,6 +540,8 @@ which jupyterhub-singleuser
     state_pending_re = Unicode(r'^(?:PENDING|CONFIGURING)').tag(config=True)
     state_running_re = Unicode(r'^(?:RUNNING|COMPLETING)').tag(config=True)
     state_exechost_re = Unicode(r'\s+((?:[\w_-]+\.?)+)$').tag(config=True)
+
+    def 
 
     def parse_job_id(self, output):
         # make sure jobid is really a number
