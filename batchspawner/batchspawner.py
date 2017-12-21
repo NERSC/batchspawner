@@ -509,6 +509,10 @@ class RollinSlurmSpawner(UserEnvMixin,BatchSpawnerRegexStates):
             `{username}` will be expanded to the user's username"""
             ).tag(config=True)
 
+    @validate("req_ssh_keyfile")
+    def _validate_req_ssh_keyfile(self, proposal):
+        return proposal["value"].format(username=self.user.name)
+
     req_remote_host = Unicode('remote_host',
                           help="""The SSH remote host to spawn sessions on."""
                           ).tag(config=True)
