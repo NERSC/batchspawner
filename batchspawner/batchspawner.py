@@ -541,8 +541,6 @@ which jupyterhub-singleuser
     state_running_re = Unicode(r'^(?:RUNNING|COMPLETING)').tag(config=True)
     state_exechost_re = Unicode(r'\s+((?:[\w_-]+\.?)+)$').tag(config=True)
 
-    def 
-
     def parse_job_id(self, output):
         # make sure jobid is really a number
         try:
