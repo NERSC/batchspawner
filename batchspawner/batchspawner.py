@@ -504,7 +504,7 @@ class RollinSlurmSpawner(UserEnvMixin,BatchSpawnerRegexStates):
 #SBATCH --constraint=haswell
 #SBATCH --partition=regular
 #SBATCH --time=10
-#SBATCH --output={homedir}/jupyterhub_slurmspawner_%j.log
+#SBATCH --output=jupyter-%j.log
 #SBATCH --job-name=spawner-jupyterhub
 
 which jupyterhub-singleuser
