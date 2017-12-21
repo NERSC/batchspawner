@@ -509,7 +509,7 @@ which jupyterhub-singleuser
 #{cmd}
 """).tag(config=True)
 
-    prefix = "ssh -o StrictHostKeyChecking=no -o preferredauthentications=publickey -l rthomas -p 22 -i /tmp/rthomas.key "
+    prefix = "ssh -o StrictHostKeyChecking=no -o preferredauthentications=publickey -l rthomas -p 22 -i /tmp/rthomas.key gert01-224.nersc.gov"
 
     # outputs line like "Submitted batch job 209"
     batch_submit_cmd = Unicode(prefix + 'sbatch').tag(config=True)
