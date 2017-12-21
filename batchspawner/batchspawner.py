@@ -158,6 +158,7 @@ class BatchSpawnerBase(Spawner):
     @gen.coroutine
     def submit_batch_script(self):
         subvars = self.get_req_subvars()
+        self.log.info("command: " + self.batch_submit_cmd)  # TMP
         cmd = self.batch_submit_cmd.format(**subvars)
         subvars['cmd'] = self.cmd_formatted_for_batch()
         if hasattr(self, 'user_options'):
