@@ -26,7 +26,7 @@ from tornado.iostream import StreamClosedError
 
 from jupyterhub.spawner import Spawner
 from traitlets import (
-    Integer, Unicode, Float, Dict, default
+    Integer, Unicode, Float, Dict, default, validate
 )
 
 from jupyterhub.utils import random_port
@@ -486,6 +486,120 @@ which jupyterhub-singleuser
             self.log.error("SlurmSpawner unable to parse job ID from text: " + output)
             raise e
         return id
+
+class RollinSlurmSpawner(BatchSpawnerRegexStates):
+    """A Spawner that just uses Popen to start local processes."""
+
+    # all these req_foo traits will be available as substvars for templated strings
+    req_partition = Unicode('', \
+        help="Partition name to submit job to resource manager"
+        ).tag(config=True)
+
+    req_qos = Unicode('', \
+        help="QoS name to submit job to resource manager"
+        ).tag(config=True)
+
+    req_ssh_keyfile = Unicode('~/.ssh/id_rsa',
+            help="""The keyfile used to authenticate the hub with the remote host.
+
+            `~` will be expanded to the user's home directory
+            `{username}` will be expanded to the user's username"""
+            ).tag(config=True)
+
+    @validate("req_ssh_keyfile")
+    def _validate_req_ssh_keyfile(self, proposal):
+        return proposal["value"].format(username=self.user.name)
+
+    req_remote_host = Unicode('remote_host',
+                          help="""The SSH remote host to spawn sessions on."""
+                          ).tag(config=True)
+
+    req_remote_port = Unicode('22',
+                          help="""The SSH remote port number."""
+                          ).tag(config=True)
+
+    req_env_text = Unicode()
+
+    @default("req_env_text")
+    def _req_env_text(self):
+        env = self.get_env()
+        text = ""
+        for item in env.items():
+            text += 'export %s=%s\n' % item
+        return text
+
+    batch_script = Unicode("""#!/bin/bash
+#SBATCH --constraint=haswell
+#SBATCH --partition=regular
+#SBATCH --time=10
+#SBATCH --output=jupyter-%j.log
+#SBATCH --job-name=spawner-jupyterhub
+
+sdnpath=/global/common/shared/das/sdn
+
+/usr/bin/python $sdnpath/cli.py associate
+
+export PATH=/global/common/cori/software/python/3.6-anaconda-4.4/bin:$PATH
+which jupyterhub-singleuser
+{env_text}
+unset XDG_RUNTIME_DIR
+{cmd}
+
+# /usr/bin/python $sdnpath/cli.py release
+""").tag(config=True)
+
+    prefix = "ssh -o StrictHostKeyChecking=no -o preferredauthentications=publickey -l {username} -p {remote_port} -i {ssh_keyfile} {remote_host} "
+
+    # outputs line like "Submitted batch job 209"
+    batch_submit_cmd = Unicode(prefix + 'sbatch').tag(config=True)
+    # outputs status and exec node like "RUNNING hostname"
+#   batch_query_cmd = Unicode(prefix + 'squeue -h -j {job_id} -o \\"%T %B\\"').tag(config=True) # Added backslashes here for quoting
+    batch_query_cmd = Unicode(prefix + '/usr/bin/python /global/common/shared/das/sdn/getip.py {job_id}').tag(config=True) # Added backslashes here for quoting
+    batch_cancel_cmd = Unicode(prefix + 'scancel {job_id}').tag(config=True)
+    # use long-form states: PENDING,  CONFIGURING = pending
+    #  RUNNING,  COMPLETING = running
+    state_pending_re = Unicode(r'^(?:PENDING|CONFIGURING)').tag(config=True)
+    state_running_re = Unicode(r'^(?:RUNNING|COMPLETING)').tag(config=True)
+    state_exechost_re = Unicode(r'\s+((?:[\w_-]+\.?)+)$').tag(config=True)
+
+    def parse_job_id(self, output):
+        # make sure jobid is really a number
+        try:
+            id = output.split(' ')[-1]
+            int(id)
+        except Exception as e:
+            self.log.error("SlurmSpawner unable to parse job ID from text: " + output)
+            raise e
+        return id
+
+    # This is based on SSH Spawner
+    def get_env(self):
+        """Add user environment variables"""
+        env = super().get_env()
+
+        env.update(dict(
+            JPY_USER=self.user.name,
+            JPY_COOKIE_NAME=self.user.server.cookie_name,
+            JPY_BASE_URL=self.user.server.base_url,
+            JPY_HUB_PREFIX=self.hub.server.base_url,
+            JUPYTERHUB_PREFIX=self.hub.server.base_url,
+            # PATH=self.path
+            # NERSC local mod
+            PATH=self.path
+        ))
+
+        if self.notebook_dir:
+            env['NOTEBOOK_DIR'] = self.notebook_dir
+
+        hub_api_url = self.hub.api_url
+        if self.hub_api_url != '':
+            hub_api_url = self.hub_api_url
+
+        env['JPY_HUB_API_URL'] = hub_api_url
+        env['JUPYTERHUB_API_URL'] = hub_api_url
+
+        return env
+
 
 class MultiSlurmSpawner(SlurmSpawner):
     '''When slurm has been compiled with --enable-multiple-slurmd, the
