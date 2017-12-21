@@ -487,6 +487,51 @@ which jupyterhub-singleuser
             raise e
         return id
 
+class RollinSlurmSpawner(UserEnvMixin,BatchSpawnerRegexStates):
+    """A Spawner that just uses Popen to start local processes."""
+
+    # all these req_foo traits will be available as substvars for templated strings
+    req_partition = Unicode('', \
+        help="Partition name to submit job to resource manager"
+        ).tag(config=True)
+
+    req_qos = Unicode('', \
+        help="QoS name to submit job to resource manager"
+        ).tag(config=True)
+
+    batch_script = Unicode("""#!/bin/bash
+#SBATCH --partition=regular
+#SBATCH --time=10
+#SBATCH --output={homedir}/jupyterhub_slurmspawner_%j.log
+#SBATCH --job-name=spawner-jupyterhub
+
+which jupyterhub-singleuser
+#{cmd}
+""").tag(config=True)
+
+    prefix = "ssh -o StrictHostKeyChecking=no -o preferredauthentications=publickey -l rthomas -p 22 -i /tmp/rthomas.key "
+
+    # outputs line like "Submitted batch job 209"
+    batch_submit_cmd = Unicode(prefix + 'sbatch').tag(config=True)
+    # outputs status and exec node like "RUNNING hostname"
+    batch_query_cmd = Unicode(prefix + 'squeue -h -j {job_id} -o "%T %B"').tag(config=True) #
+    batch_cancel_cmd = Unicode(prefix + 'scancel {job_id}').tag(config=True)
+    # use long-form states: PENDING,  CONFIGURING = pending
+    #  RUNNING,  COMPLETING = running
+    state_pending_re = Unicode(r'^(?:PENDING|CONFIGURING)').tag(config=True)
+    state_running_re = Unicode(r'^(?:RUNNING|COMPLETING)').tag(config=True)
+    state_exechost_re = Unicode(r'\s+((?:[\w_-]+\.?)+)$').tag(config=True)
+
+    def parse_job_id(self, output):
+        # make sure jobid is really a number
+        try:
+            id = output.split(' ')[-1]
+            int(id)
+        except Exception as e:
+            self.log.error("SlurmSpawner unable to parse job ID from text: " + output)
+            raise e
+        return id
+
 class MultiSlurmSpawner(SlurmSpawner):
     '''When slurm has been compiled with --enable-multiple-slurmd, the
        administrator sets the name of the slurmd instance via the slurmd -N
