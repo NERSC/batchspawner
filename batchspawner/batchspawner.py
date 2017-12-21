@@ -26,7 +26,7 @@ from tornado.iostream import StreamClosedError
 
 from jupyterhub.spawner import Spawner
 from traitlets import (
-    Integer, Unicode, Float, Dict, default
+    Integer, Unicode, Float, Dict, default, validate
 )
 
 import jupyterhub
