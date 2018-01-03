@@ -522,8 +522,8 @@ class RollinSlurmSpawner(BatchSpawnerRegexStates):
                           help="""The SSH remote port number."""
                           ).tag(config=True)
 
-    req_env_text = Unicode('',
-            help="""Env var text""",
+    req_env_text = Unicode('echo',
+            help="""Env var text"""
         ).tag(config=True)
 
     @validate("req_env_text")
