@@ -532,6 +532,7 @@ class RollinSlurmSpawner(BatchSpawnerRegexStates):
         text = ""
         for item in env.items():
             text += 'export %s=%s\n' % item
+        self.log.info("Text:\n" + text)
         return text
 
     batch_script = Unicode("""#!/bin/bash
