@@ -521,6 +521,10 @@ class RollinSlurmSpawner(BatchSpawnerRegexStates):
                           help="""The SSH remote port number."""
                           ).tag(config=True)
 
+    req_env_text = Unicode('',
+            help="""Env var text""",
+        ).tag(config=True)
+
     @validate("req_env_text")
     def _validate_req_env_text(self, proposal):
         # Might be better way than just setting this instead of ignoring proposal
