@@ -528,9 +528,15 @@ class RollinSlurmSpawner(UserEnvMixin,BatchSpawnerRegexStates):
 #SBATCH --output=jupyter-%j.log
 #SBATCH --job-name=spawner-jupyterhub
 
+sdnpath=/global/common/shared/das/sdn
+
+/usr/bin/python $sdnpath/cli.py associate
+
 export PATH=/global/common/cori/software/python/3.6-anaconda-4.4/bin:$PATH
 which jupyterhub-singleuser
 {cmd}
+
+/usr/bin/python $sdnpath/cli.py release
 """).tag(config=True)
 
     prefix = "ssh -o StrictHostKeyChecking=no -o preferredauthentications=publickey -l {username} -p {remote_port} -i {ssh_keyfile} {remote_host} "
