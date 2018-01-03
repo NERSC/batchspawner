@@ -530,11 +530,11 @@ class RollinSlurmSpawner(BatchSpawnerRegexStates):
     def _validate_req_env_text(self, proposal):
         # Might be better way than just setting this instead of ignoring proposal
         env = self.get_env()
-        text = ""
+        proposal["value"] = ""
         for item in env.items():
-            text += 'export %s=%s\n' % item
-        self.log.info("Text:\n" + text)
-        return text
+            proposal["value"] += 'export %s=%s\n' % item
+        self.log.info("Text:\n" + proposal["value"])
+        return proposal["value"]
 
     batch_script = Unicode("""#!/bin/bash
 #SBATCH --constraint=haswell
