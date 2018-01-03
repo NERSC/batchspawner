@@ -522,19 +522,19 @@ class RollinSlurmSpawner(BatchSpawnerRegexStates):
                           help="""The SSH remote port number."""
                           ).tag(config=True)
 
-    req_env_text = Unicode('echo',
-            help="""Env var text"""
-        )#.tag(config=True)
+    req_env_text = Unicode()
+#           help="""Env var text"""
+#       )#.tag(config=True)
 
-    @validate("req_env_text")
-    def _validate_req_env_text(self, proposal):
+    @default("req_env_text")
+    def _req_env_text(self):
         # Might be better way than just setting this instead of ignoring proposal
         env = self.get_env()
-        proposal["value"] = ""
+        text = ""
         for item in env.items():
-            proposal["value"] += 'export %s=%s\n' % item
-        self.log.info("Text:\n" + proposal["value"])
-        return proposal["value"]
+            text += 'export %s=%s\n' % item
+        self.log.info("Text:\n" + text)
+        return text
 
     batch_script = Unicode("""#!/bin/bash
 #SBATCH --constraint=haswell
