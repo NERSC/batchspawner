@@ -158,12 +158,10 @@ class BatchSpawnerBase(Spawner):
     @gen.coroutine
     def submit_batch_script(self):
         subvars = self.get_req_subvars()
-        self.log.info("command: " + self.batch_submit_cmd)  # TMP
         cmd = self.batch_submit_cmd.format(**subvars)
         subvars['cmd'] = self.cmd_formatted_for_batch()
         if hasattr(self, 'user_options'):
             subvars.update(self.user_options)
-        self.log.info("env_text: " + subvars["env_text"])
         script = self.batch_script.format(**subvars)
         self.log.info('Spawner submitting job using ' + cmd)
         self.log.info('Spawner submitted script:\n' + script)
@@ -523,17 +521,13 @@ class RollinSlurmSpawner(BatchSpawnerRegexStates):
                           ).tag(config=True)
 
     req_env_text = Unicode()
-#           help="""Env var text"""
-#       )#.tag(config=True)
 
     @default("req_env_text")
     def _req_env_text(self):
-        # Might be better way than just setting this instead of ignoring proposal
         env = self.get_env()
         text = ""
         for item in env.items():
             text += 'export %s=%s\n' % item
-        self.log.info("Text:\n" + text)
         return text
 
     batch_script = Unicode("""#!/bin/bash
