@@ -524,7 +524,7 @@ class RollinSlurmSpawner(BatchSpawnerRegexStates):
 
     req_env_text = Unicode('echo',
             help="""Env var text"""
-        ).tag(config=True)
+        )#.tag(config=True)
 
     @validate("req_env_text")
     def _validate_req_env_text(self, proposal):
