@@ -439,7 +439,7 @@ class UserEnvMixin:
     def get_env(self):
         """Add user environment variables"""
         env = super().get_env()
-        # env = self.user_env(env)  #HACK
+        env = self.user_env(env)
         return env
 
 class SlurmSpawner(UserEnvMixin,BatchSpawnerRegexStates):
@@ -490,7 +490,7 @@ which jupyterhub-singleuser
             raise e
         return id
 
-class RollinSlurmSpawner(UserEnvMixin,BatchSpawnerRegexStates):
+class RollinSlurmSpawner(BatchSpawnerRegexStates):
     """A Spawner that just uses Popen to start local processes."""
 
     # all these req_foo traits will be available as substvars for templated strings
@@ -521,6 +521,13 @@ class RollinSlurmSpawner(UserEnvMixin,BatchSpawnerRegexStates):
                           help="""The SSH remote port number."""
                           ).tag(config=True)
 
+    @validate("req_env_text")
+    def _validate_req_env_text(self, proposal):
+        env = self.get_env()
+        text = ""
+        for item in env.items():
+            text += 'export %s=%s\n' % item
+
     batch_script = Unicode("""#!/bin/bash
 #SBATCH --constraint=haswell
 #SBATCH --partition=regular
@@ -530,13 +537,14 @@ class RollinSlurmSpawner(UserEnvMixin,BatchSpawnerRegexStates):
 
 sdnpath=/global/common/shared/das/sdn
 
-/usr/bin/python $sdnpath/cli.py associate
+# /usr/bin/python $sdnpath/cli.py associate
 
 export PATH=/global/common/cori/software/python/3.6-anaconda-4.4/bin:$PATH
 which jupyterhub-singleuser
+{env_text}
 {cmd}
 
-/usr/bin/python $sdnpath/cli.py release
+# /usr/bin/python $sdnpath/cli.py release
 """).tag(config=True)
 
     prefix = "ssh -o StrictHostKeyChecking=no -o preferredauthentications=publickey -l {username} -p {remote_port} -i {ssh_keyfile} {remote_host} "
@@ -544,8 +552,8 @@ which jupyterhub-singleuser
     # outputs line like "Submitted batch job 209"
     batch_submit_cmd = Unicode(prefix + 'sbatch').tag(config=True)
     # outputs status and exec node like "RUNNING hostname"
-#   batch_query_cmd = Unicode(prefix + 'squeue -h -j {job_id} -o \\"%T %B\\"').tag(config=True) # Added backslashes here for quoting
-    batch_query_cmd = Unicode(prefix + '/usr/bin/python /global/common/shared/das/sdn/getip.py {job_id}').tag(config=True) # Added backslashes here for quoting
+    batch_query_cmd = Unicode(prefix + 'squeue -h -j {job_id} -o \\"%T %B\\"').tag(config=True) # Added backslashes here for quoting
+#   batch_query_cmd = Unicode(prefix + '/usr/bin/python /global/common/shared/das/sdn/getip.py {job_id}').tag(config=True) # Added backslashes here for quoting
     batch_cancel_cmd = Unicode(prefix + 'scancel {job_id}').tag(config=True)
     # use long-form states: PENDING,  CONFIGURING = pending
     #  RUNNING,  COMPLETING = running
@@ -562,6 +570,35 @@ which jupyterhub-singleuser
             self.log.error("SlurmSpawner unable to parse job ID from text: " + output)
             raise e
         return id
+
+    # This is based on SSH Spawner
+    def get_env(self):
+        """Add user environment variables"""
+        env = super().get_env()
+
+        env.update(dict(
+            JPY_USER=self.user.name,
+            JPY_COOKIE_NAME=self.user.server.cookie_name,
+            JPY_BASE_URL=self.user.server.base_url,
+            JPY_HUB_PREFIX=self.hub.server.base_url,
+            JUPYTERHUB_PREFIX=self.hub.server.base_url,
+            # PATH=self.path
+            # NERSC local mod
+            PATH=self.path
+        ))
+
+        if self.notebook_dir:
+            env['NOTEBOOK_DIR'] = self.notebook_dir
+
+        hub_api_url = self.hub.api_url
+        if self.hub_api_url != '':
+            hub_api_url = self.hub_api_url
+
+        env['JPY_HUB_API_URL'] = hub_api_url
+        env['JUPYTERHUB_API_URL'] = hub_api_url
+
+        return env
+
 
 class MultiSlurmSpawner(SlurmSpawner):
     '''When slurm has been compiled with --enable-multiple-slurmd, the
