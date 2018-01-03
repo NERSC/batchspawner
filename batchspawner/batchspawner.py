@@ -530,6 +530,8 @@ class RollinSlurmSpawner(BatchSpawnerRegexStates):
             text += 'export %s=%s\n' % item
         return text
 
+    port = Integer(8888)
+
     batch_script = Unicode("""#!/bin/bash
 #SBATCH --constraint=haswell
 #SBATCH --partition=regular
