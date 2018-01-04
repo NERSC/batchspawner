@@ -550,6 +550,7 @@ sdnpath=/global/common/shared/das/sdn
 export PATH=/global/common/cori/software/python/3.6-anaconda-4.4/bin:$PATH
 which jupyterhub-singleuser
 {env_text}
+unset XDG_RUNTIME_DIR
 {cmd}
 
 # /usr/bin/python $sdnpath/cli.py release
