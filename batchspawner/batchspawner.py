@@ -274,10 +274,12 @@ class BatchSpawnerBase(Spawner):
         if self.user and self.user.server and self.user.server.port:
             self.port = self.user.server.port
             self.db.commit()
+            self.log.info("BRANCH A " + self.port)
         elif (jupyterhub.version_info < (0,7) and not self.user.server.port)  or \
              (jupyterhub.version_info >= (0,7) and not self.port):
             self.port = random_port()
             self.db.commit()
+            self.log.info("BRANCH B " + self.port)
         job = yield self.submit_batch_script()
 
         # We are called with a timeout, and if the timeout expires this function will
