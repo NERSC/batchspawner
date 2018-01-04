@@ -95,8 +95,7 @@ class BatchSpawnerBase(Spawner):
     req_homedir = Unicode()
     @default('req_homedir')
     def _req_homedir_default(self):
-#       return "/tmp"                                   # HACK
-        return pwd.getpwnam(self.user.name).pw_dir      # HACK
+        return pwd.getpwnam(self.user.name).pw_dir
 
     req_keepvars = Unicode()
     @default('req_keepvars')
