@@ -532,10 +532,6 @@ class RollinSlurmSpawner(BatchSpawnerRegexStates):
             text += 'export %s=%s\n' % item
         return text
 
-    @default('port')
-    def _port_default(self):
-        return 8888
-
     batch_script = Unicode("""#!/bin/bash
 #SBATCH --constraint=haswell
 #SBATCH --partition=regular
