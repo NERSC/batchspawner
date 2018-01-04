@@ -545,7 +545,7 @@ class RollinSlurmSpawner(BatchSpawnerRegexStates):
 
 sdnpath=/global/common/shared/das/sdn
 
-# /usr/bin/python $sdnpath/cli.py associate
+/usr/bin/python $sdnpath/cli.py associate
 
 export PATH=/global/common/cori/software/python/3.6-anaconda-4.4/bin:$PATH
 which jupyterhub-singleuser
