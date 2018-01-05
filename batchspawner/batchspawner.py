@@ -488,35 +488,27 @@ which jupyterhub-singleuser
         return id
 
 class RollinSlurmSpawner(BatchSpawnerRegexStates):
-    """A Spawner that just uses Popen to start local processes."""
+    """Spawner that connects to a job-submit (login node) and submits a job to
+    start a process running in the Slurm batch queue.
+
+    NOTE Right now we allow the hub to pre-select a random port but when multiple
+    users are on the same compute node, a la shared-interactive, we need to control
+    the port selected deterministically or ensure they don't collide in some way."""
 
     # all these req_foo traits will be available as substvars for templated strings
-    req_partition = Unicode('', \
-        help="Partition name to submit job to resource manager"
-        ).tag(config=True)
 
-    req_qos = Unicode('', \
-        help="QoS name to submit job to resource manager"
-        ).tag(config=True)
-
-    req_ssh_keyfile = Unicode('~/.ssh/id_rsa',
-            help="""The keyfile used to authenticate the hub with the remote host.
-
-            `~` will be expanded to the user's home directory
-            `{username}` will be expanded to the user's username"""
+    req_qos = Unicode('regular',
+            help="QoS name to submit job to resource manager"
             ).tag(config=True)
-
-    @validate("req_ssh_keyfile")
-    def _validate_req_ssh_keyfile(self, proposal):
-        return proposal["value"].format(username=self.user.name)
 
     req_remote_host = Unicode('remote_host',
                           help="""The SSH remote host to spawn sessions on."""
                           ).tag(config=True)
 
-    req_remote_port = Unicode('22',
-                          help="""The SSH remote port number."""
-                          ).tag(config=True)
+    req_constraint = Unicode('haswell',
+            help="""Users specify which features are required by their job
+            using the constraint option, which is required at NERSC on Cori/Gerty."""
+            ).tag(config=True)
 
     req_env_text = Unicode()
 
@@ -529,11 +521,11 @@ class RollinSlurmSpawner(BatchSpawnerRegexStates):
         return text
 
     batch_script = Unicode("""#!/bin/bash
-#SBATCH --constraint=haswell
-#SBATCH --partition=regular
-#SBATCH --time=10
+#SBATCH --constraint={constraint}
+#SBATCH --job-name=jupyter
 #SBATCH --output=jupyter-%j.log
-#SBATCH --job-name=spawner-jupyterhub
+#SBATCH --qos={qos}
+#SBATCH --time={runtime}
 
 sdnpath=/global/common/shared/das/sdn
 
@@ -544,11 +536,9 @@ which jupyterhub-singleuser
 {env_text}
 unset XDG_RUNTIME_DIR
 {cmd}
-
-# /usr/bin/python $sdnpath/cli.py release
 """).tag(config=True)
 
-    prefix = "ssh -o StrictHostKeyChecking=no -o preferredauthentications=publickey -l {username} -p {remote_port} -i {ssh_keyfile} {remote_host} "
+    prefix = "ssh -q -o StrictHostKeyChecking=no -o preferredauthentications=publickey -l {username} -i /tmp/{username}.key {remote_host} "
 
     # outputs line like "Submitted batch job 209"
     batch_submit_cmd = Unicode(prefix + 'sbatch').tag(config=True)
