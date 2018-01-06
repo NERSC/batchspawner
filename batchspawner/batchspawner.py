@@ -31,27 +31,7 @@ from traitlets import (
 
 from jupyterhub.utils import random_port
 from jupyterhub.spawner import set_user_setuid
-
-@gen.coroutine
-def run_command(cmd, input=None, env=None):
-    proc = Subprocess(cmd, shell=True, env=env, stdin=Subprocess.STREAM, stdout=Subprocess.STREAM)
-    inbytes = None
-    if input:
-        inbytes = input.encode()
-        try:
-            yield proc.stdin.write(inbytes)
-        except StreamClosedError as exp:
-            # Apparently harmless
-            pass
-    proc.stdin.close()
-    out = yield proc.stdout.read_until_close()
-    proc.stdout.close()
-    err = yield proc.wait_for_exit()
-    if err != 0:
-        return err # exit error?
-    else:
-        out = out.decode().strip()
-        return out
+import jupyterhub
 
 class BatchSpawnerBase(Spawner):
     """Base class for spawners using resource manager batch job submission mechanisms
@@ -153,16 +133,37 @@ class BatchSpawnerBase(Spawner):
         return ' '.join(self.cmd + self.get_args())
 
     @gen.coroutine
+    def run_command(self, cmd, input=None, env=None):
+        proc = Subprocess(cmd, shell=True, env=env, stdin=Subprocess.STREAM, stdout=Subprocess.STREAM)
+        inbytes = None
+        if input:
+            inbytes = input.encode()
+            try:
+                yield proc.stdin.write(inbytes)
+            except StreamClosedError as exp:
+                # Apparently harmless
+                pass
+        proc.stdin.close()
+        out = yield proc.stdout.read_until_close()
+        proc.stdout.close()
+        err = yield proc.wait_for_exit()
+        if err != 0:
+            return err # exit error?
+        else:
+            out = out.decode().strip()
+            return out
+
+    @gen.coroutine
     def submit_batch_script(self):
         subvars = self.get_req_subvars()
         cmd = self.batch_submit_cmd.format(**subvars)
         subvars['cmd'] = self.cmd_formatted_for_batch()
         if hasattr(self, 'user_options'):
-            subvars['user_options'] = self.user_options
+            subvars.update(self.user_options)
         script = self.batch_script.format(**subvars)
         self.log.info('Spawner submitting job using ' + cmd)
         self.log.info('Spawner submitted script:\n' + script)
-        out = yield run_command(cmd, input=script, env=self.get_env())
+        out = yield self.run_command(cmd, input=script, env=self.get_env())
         try:
             self.log.info('Job submitted. cmd: ' + cmd + ' output: ' + out)
             self.job_id = self.parse_job_id(out)
@@ -188,7 +189,7 @@ class BatchSpawnerBase(Spawner):
         cmd = self.batch_query_cmd.format(**subvars)
         self.log.debug('Spawner querying job: ' + cmd)
         try:
-            out = yield run_command(cmd)
+            out = yield self.run_command(cmd)
             self.job_status = out
         except Exception as e:
             self.log.error('Error querying job ' + self.job_id)
@@ -206,7 +207,7 @@ class BatchSpawnerBase(Spawner):
         subvars['job_id'] = self.job_id
         cmd = self.batch_cancel_cmd.format(**subvars)
         self.log.info('Cancelling job ' + self.job_id + ': ' + cmd)
-        yield run_command(cmd)
+        yield self.run_command(cmd)
 
     def load_state(self, state):
         """load job_id from state"""
@@ -268,8 +269,12 @@ class BatchSpawnerBase(Spawner):
     @gen.coroutine
     def start(self):
         """Start the process"""
-        if not self.user.server.port:
-            self.user.server.port = random_port()
+        if self.user and self.user.server and self.user.server.port:
+            self.port = self.user.server.port
+            self.db.commit()
+        elif (jupyterhub.version_info < (0,7) and not self.user.server.port)  or \
+             (jupyterhub.version_info >= (0,7) and not self.port):
+            self.port = random_port()
             self.db.commit()
         job = yield self.submit_batch_script()
 
@@ -291,13 +296,17 @@ class BatchSpawnerBase(Spawner):
                 assert self.state_ispending()
             yield gen.sleep(self.startup_poll_interval)
 
-        self.user.server.ip = self.state_gethost()
+        self.ip = self.state_gethost()
+        if jupyterhub.version_info < (0,7):
+            # store on user for pre-jupyterhub-0.7:
+            self.user.server.port = self.port
+            self.user.server.ip = self.ip
         self.db.commit()
         self.log.info("Notebook server job {0} started at {1}:{2}".format(
-                        self.job_id, self.user.server.ip, self.user.server.port)
+                        self.job_id, self.ip, self.port)
             )
 
-        return self.user.server.ip, self.user.server.port
+        return self.ip, self.port
 
     @gen.coroutine
     def stop(self, now=False):
@@ -317,7 +326,7 @@ class BatchSpawnerBase(Spawner):
             yield gen.sleep(1.0)
         if self.job_id:
             self.log.warn("Notebook server job {0} at {1}:{2} possibly failed to terminate".format(
-                             self.job_id, self.user.server.ip, self.user.server.port)
+                             self.job_id, self.ip, self.port)
                 )
 
 import re
